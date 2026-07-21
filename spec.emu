@@ -4,20 +4,104 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/github.min.css">
 <script src="./spec.js"></script>
 <pre class="metadata">
-title: Proposal Title Goes Here
-stage: -1
-contributors: Your Name Goes Here
+title: Compartments
+stage: 1
+contributors: Mark S. Miller, Caridy Patiño, Patrick Soquet, Kris Kowal, Jack Works, Guy Bedford
 </pre>
 
-<emu-clause id="sec-demo-clause">
-  <h1>This is an emu-clause</h1>
-  <p>This is an algorithm:</p>
-  <emu-alg>
-    1. Let _proposal_ be *undefined*.
-    1. If IsAccepted(_proposal_),
-      1. Let _stage_ be *0*.
-    1. Else,
-      1. Let _stage_ be *-1*.
-    1. Return ? ToString(_proposal_).
-  </emu-alg>
+<emu-intro id="sec-intro">
+  <h1>Introduction</h1>
+  <p>
+    A Compartment is an object that owns a mapping from module source keys to
+    module instances, evaluated against a chosen global object. This proposal
+    specifies a minimal Compartment surface that composes with the rest of module
+    harmony by taking the intersection of the related proposals rather than
+    layering a parallel module system beside them.
+  </p>
+  <p>
+    This document is a scaffold. Each clause below names a part of the
+    intersection surface and will be filled in as the design settles. Prior
+    iterations of the proposal are preserved in the repository's `archive/`
+    directory and are not normative here.
+  </p>
+  <emu-note>
+    <p>
+      Two commitments shape this specification. First, a ModuleSource is treated
+      as an opaque key for indexing a module instance within a Compartment; the
+      SES-era module descriptor concept is not used. Second, a Compartment must be
+      able to evaluate modules against the surrounding realm's global object, so
+      that the design is viable for hosts such as Node.js that do not want to pay
+      for an additional global runtime context.
+    </p>
+  </emu-note>
+</emu-intro>
+
+<emu-clause id="sec-module-source-key">
+  <h1>ModuleSource as an Opaque Key</h1>
+  <p>
+    A ModuleSource produced by the source phase of a module is used as an opaque
+    key. A Compartment holds at most one module instance per ModuleSource key.
+    This clause will define the identity and lifetime rules for that key.
+  </p>
+</emu-clause>
+
+<emu-clause id="sec-compartment-objects">
+  <h1>Compartment Objects</h1>
+  <p>This clause will define the Compartment abstraction and its instances.</p>
+
+  <emu-clause id="sec-compartment-constructor">
+    <h1>The Compartment Constructor</h1>
+    <p>This clause will define construction, including the choice of global object.</p>
+  </emu-clause>
+
+  <emu-clause id="sec-compartment-prototype-import">
+    <h1>Compartment.prototype.import</h1>
+    <p>This clause will define asynchronous module loading and evaluation.</p>
+  </emu-clause>
+
+  <emu-clause id="sec-compartment-module-indexing">
+    <h1>Indexing Module Instances by ModuleSource Key</h1>
+    <p>This clause will define the per-Compartment source-key to instance mapping.</p>
+  </emu-clause>
+</emu-clause>
+
+<emu-clause id="sec-global-object-sharing">
+  <h1>Sharing the Surrounding Realm's Global Object</h1>
+  <p>
+    This clause will specify how a Compartment evaluates modules against the
+    surrounding realm's global object, so that no additional global runtime
+    context is required. This is the binding constraint for Node.js viability.
+  </p>
+</emu-clause>
+
+<emu-clause id="sec-intersection-source-phase-imports">
+  <h1>Intersection with Source Phase Imports</h1>
+  <p>
+    This clause will specify how a Compartment's source keys relate to the static
+    source phase import form (import source ... from ...).
+  </p>
+</emu-clause>
+
+<emu-clause id="sec-intersection-source-phase-import-expression">
+  <h1>Intersection with the Source Phase Import Expression</h1>
+  <p>
+    This clause will specify how a Compartment relates to the source phase import
+    expression (the dynamic source phase import form).
+  </p>
+</emu-clause>
+
+<emu-clause id="sec-intersection-import-defer">
+  <h1>Intersection with Import Defer</h1>
+  <p>
+    This clause will specify how deferred module evaluation composes with a
+    Compartment's source-key indexing.
+  </p>
+</emu-clause>
+
+<emu-clause id="sec-loader-hooks">
+  <h1>Loading and Resolution</h1>
+  <p>
+    This clause will specify the intersection with module virtualization: how a
+    Compartment resolves specifiers and obtains ModuleSource values.
+  </p>
 </emu-clause>
