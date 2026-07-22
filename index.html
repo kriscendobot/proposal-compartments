@@ -1,10 +1,12 @@
 <!doctype html>
 <head><meta name="viewport" content="width=device-width, initial-scale=1"><meta charset="utf-8"><meta property="og:image" content="https://tc39.es/ecmarkup/ecma-logo.png"><meta property="og:title" content="Compartments"><meta property="og:description" content="Introduction
   
-    A Compartment is an object that owns a mapping from module source keys to
-    module instances, evaluated against a chosen global object. This proposal
-    specifies a minimal Compartment surface that composes with the rest of module
-    harmony by taking the intersection of t">
+    A Compartment owns a module-instance memo while reusing the global object of
+    the realm in which it is constructed. It gives a host another module graph,
+    not another mandatory global runtime context.
+  
+  
+    This proposal is a small extension of the ECMA-262 module mo">
 <link rel="stylesheet" href="./spec.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/github.min.css">
 <script src="./spec.js"></script>
@@ -1620,7 +1622,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let sdoMap = JSON.parse(`{}`);
-let biblio = JSON.parse(`{"refsByClause":{},"entries":[{"type":"clause","id":"sec-intro","titleHTML":"Introduction","number":""},{"type":"clause","id":"sec-module-source-key","titleHTML":"ModuleSource as an Opaque Key","number":"1"},{"type":"clause","id":"sec-compartment-constructor","titleHTML":"The Compartment Constructor","number":"2.1"},{"type":"clause","id":"sec-compartment-prototype-import","titleHTML":"Compartment.prototype.import","number":"2.2"},{"type":"clause","id":"sec-compartment-module-indexing","titleHTML":"Indexing Module Instances by ModuleSource Key","number":"2.3"},{"type":"clause","id":"sec-compartment-objects","titleHTML":"Compartment Objects","number":"2"},{"type":"clause","id":"sec-global-object-sharing","titleHTML":"Sharing the Surrounding Realm's Global Object","number":"3"},{"type":"clause","id":"sec-intersection-source-phase-imports","titleHTML":"Intersection with Source Phase Imports","number":"4"},{"type":"clause","id":"sec-intersection-source-phase-import-expression","titleHTML":"Intersection with the Source Phase Import Expression","number":"5"},{"type":"clause","id":"sec-intersection-import-defer","titleHTML":"Intersection with Import Defer","number":"6"},{"type":"clause","id":"sec-loader-hooks","titleHTML":"Loading and Resolution","number":"7"},{"type":"clause","id":"sec-copyright-and-software-license","title":"Copyright & Software License","titleHTML":"Copyright &amp; Software License","number":"A"}]}`);
+let biblio = JSON.parse(`{"refsByClause":{"sec-compartment-prototype-exports":["_ref_0","_ref_1"],"sec-compartment-prototype-import":["_ref_2","_ref_3","_ref_4"],"sec-compartment-module-memoization":["_ref_5"],"sec-get-or-create-compartment-module":["_ref_6"],"sec-compartment-cross-compartment-linking":["_ref_7"],"sec-compartment-source-phase-imports":["_ref_8"]},"entries":[{"type":"clause","id":"sec-intro","titleHTML":"Introduction","number":""},{"type":"term","term":"Compartment source key","refId":"sec-compartment-source-keys"},{"type":"clause","id":"sec-compartment-source-keys","titleHTML":"Compartment Source Keys","number":"1","referencingIds":["_ref_8"]},{"type":"table","id":"table-compartment-internal-slots","number":1,"caption":"Table 1"},{"type":"clause","id":"sec-compartment-constructor","titleHTML":"The Compartment Constructor","number":"2.1"},{"type":"clause","id":"sec-compartment-prototype-exports","title":"Compartment.prototype.exports ( source )","titleHTML":"Compartment.prototype.exports ( <var>source</var> )","number":"2.2"},{"type":"clause","id":"sec-compartment-prototype-import","title":"Compartment.prototype.import ( source )","titleHTML":"Compartment.prototype.import ( <var>source</var> )","number":"2.3"},{"type":"clause","id":"sec-compartment-module-memoization","titleHTML":"Module Memoization","number":"2.4"},{"type":"op","aoid":"RequireCompartmentSourceKey","refId":"sec-require-compartment-source-key"},{"type":"clause","id":"sec-require-compartment-source-key","title":"RequireCompartmentSourceKey ( source )","titleHTML":"RequireCompartmentSourceKey ( <var>source</var> )","number":"2.5","referencingIds":["_ref_0","_ref_2"]},{"type":"op","aoid":"GetCompartmentExportsNamespace","refId":"sec-get-compartment-exports-namespace"},{"type":"clause","id":"sec-get-compartment-exports-namespace","title":"GetCompartmentExportsNamespace ( compartment, source )","titleHTML":"GetCompartmentExportsNamespace ( <var>compartment</var>, <var>source</var> )","number":"2.6","referencingIds":["_ref_1","_ref_3","_ref_6"]},{"type":"op","aoid":"GetOrCreateCompartmentModule","refId":"sec-get-or-create-compartment-module"},{"type":"clause","id":"sec-get-or-create-compartment-module","title":"GetOrCreateCompartmentModule ( compartment, source )","titleHTML":"GetOrCreateCompartmentModule ( <var>compartment</var>, <var>source</var> )","number":"2.7","referencingIds":["_ref_4","_ref_5","_ref_7"]},{"type":"clause","id":"sec-compartment-objects","titleHTML":"Compartment Objects","number":"2"},{"type":"clause","id":"sec-compartment-cross-compartment-linking","titleHTML":"Cross-Compartment Linking","number":"3"},{"type":"clause","id":"sec-compartment-tla-and-errors","titleHTML":"Top-Level Await and Errors","number":"4"},{"type":"clause","id":"sec-compartment-source-phase-imports","titleHTML":"Source-Phase Imports","number":"5.1"},{"type":"clause","id":"sec-compartment-source-phase-import-expression","titleHTML":"Source-Phase Import Expressions","number":"5.2"},{"type":"clause","id":"sec-compartment-import-defer","titleHTML":"Import Defer","number":"5.3"},{"type":"clause","id":"sec-compartment-module-harmony-intersection","titleHTML":"Intersection with Module Phases","number":"5"},{"type":"table","id":"table-node-viability-status","number":2,"caption":"Table 2"},{"type":"clause","id":"sec-compartment-node-viability","titleHTML":"Node.js Viability Status","number":"A"},{"type":"clause","id":"sec-compartment-test262-frontier","titleHTML":"test262 Families Unblocked","number":"B"},{"type":"clause","id":"sec-copyright-and-software-license","title":"Copyright & Software License","titleHTML":"Copyright &amp; Software License","number":"C"}]}`);
 ;let usesMultipage = false</script><style>:root {
   --foreground-color: #111;
   --background-color: #fff;
@@ -3965,104 +3967,329 @@ p.ECMAaddress {
 </ul></div><div id="menu-toggle"><svg xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%; stroke:currentColor" viewBox="0 0 120 120" width="54" height="54">
       <title>Menu</title>
       <path stroke-width="10" stroke-linecap="round" d="M30,60 h60  M30,30 m0,5 h60  M30,90 m0,-5 h60"></path>
-    </svg></div><div id="menu-spacer" class="menu-spacer"></div><div id="menu"><div id="menu-search"><input type="text" id="menu-search-box" placeholder="Search..."><div id="menu-search-results" class="inactive"></div></div><div id="menu-pins"><div class="menu-pane-header">Pins<button class="unpin-all">clear</button></div><ul id="menu-pins-list"></ul></div><div class="menu-pane-header">Table of Contents</div><div id="menu-toc"><ol class="toc"><li><span class="item-toggle-none"></span><a href="#sec-intro" title="Introduction">Introduction</a></li><li><span class="item-toggle-none"></span><a href="#sec-module-source-key" title="ModuleSource as an Opaque Key"><span class="secnum">1</span> ModuleSource as an Opaque Key</a></li><li><span class="item-toggle">+</span><a href="#sec-compartment-objects" title="Compartment Objects"><span class="secnum">2</span> Compartment Objects</a><ol class="toc"><li><span class="item-toggle-none"></span><a href="#sec-compartment-constructor" title="The Compartment Constructor"><span class="secnum">2.1</span> The Compartment Constructor</a></li><li><span class="item-toggle-none"></span><a href="#sec-compartment-prototype-import" title="Compartment.prototype.import"><span class="secnum">2.2</span> Compartment.prototype.import</a></li><li><span class="item-toggle-none"></span><a href="#sec-compartment-module-indexing" title="Indexing Module Instances by ModuleSource Key"><span class="secnum">2.3</span> Indexing Module Instances by ModuleSource Key</a></li></ol></li><li><span class="item-toggle-none"></span><a href="#sec-global-object-sharing" title="Sharing the Surrounding Realm's Global Object"><span class="secnum">3</span> Sharing the Surrounding Realm's Global Object</a></li><li><span class="item-toggle-none"></span><a href="#sec-intersection-source-phase-imports" title="Intersection with Source Phase Imports"><span class="secnum">4</span> Intersection with Source Phase Imports</a></li><li><span class="item-toggle-none"></span><a href="#sec-intersection-source-phase-import-expression" title="Intersection with the Source Phase Import Expression"><span class="secnum">5</span> Intersection with the Source Phase Import Expression</a></li><li><span class="item-toggle-none"></span><a href="#sec-intersection-import-defer" title="Intersection with Import Defer"><span class="secnum">6</span> Intersection with Import Defer</a></li><li><span class="item-toggle-none"></span><a href="#sec-loader-hooks" title="Loading and Resolution"><span class="secnum">7</span> Loading and Resolution</a></li><li><span class="item-toggle-none"></span><a href="#sec-copyright-and-software-license" title="Copyright &amp; Software License">Copyright &amp; Software License</a></li></ol></div></div><div id="spec-container"><h1 class="version">Stage 1 Draft / July 22, 2026</h1><h1 class="title">Compartments</h1>
+    </svg></div><div id="menu-spacer" class="menu-spacer"></div><div id="menu"><div id="menu-search"><input type="text" id="menu-search-box" placeholder="Search..."><div id="menu-search-results" class="inactive"></div></div><div id="menu-pins"><div class="menu-pane-header">Pins<button class="unpin-all">clear</button></div><ul id="menu-pins-list"></ul></div><div class="menu-pane-header">Table of Contents</div><div id="menu-toc"><ol class="toc"><li><span class="item-toggle-none"></span><a href="#sec-intro" title="Introduction">Introduction</a></li><li><span class="item-toggle-none"></span><a href="#sec-compartment-source-keys" title="Compartment Source Keys"><span class="secnum">1</span> Compartment Source Keys</a></li><li><span class="item-toggle">+</span><a href="#sec-compartment-objects" title="Compartment Objects"><span class="secnum">2</span> Compartment Objects</a><ol class="toc"><li><span class="item-toggle-none"></span><a href="#sec-compartment-constructor" title="The Compartment Constructor"><span class="secnum">2.1</span> The Compartment Constructor</a></li><li><span class="item-toggle-none"></span><a href="#sec-compartment-prototype-exports" title="Compartment.prototype.exports ( source )"><span class="secnum">2.2</span> Compartment.prototype.exports ( <var>source</var> )</a></li><li><span class="item-toggle-none"></span><a href="#sec-compartment-prototype-import" title="Compartment.prototype.import ( source )"><span class="secnum">2.3</span> Compartment.prototype.import ( <var>source</var> )</a></li><li><span class="item-toggle-none"></span><a href="#sec-compartment-module-memoization" title="Module Memoization"><span class="secnum">2.4</span> Module Memoization</a></li><li><span class="item-toggle-none"></span><a href="#sec-require-compartment-source-key" title="RequireCompartmentSourceKey ( source )"><span class="secnum">2.5</span> RequireCompartmentSourceKey ( <var>source</var> )</a></li><li><span class="item-toggle-none"></span><a href="#sec-get-compartment-exports-namespace" title="GetCompartmentExportsNamespace ( compartment, source )"><span class="secnum">2.6</span> GetCompartmentExportsNamespace ( <var>compartment</var>, <var>source</var> )</a></li><li><span class="item-toggle-none"></span><a href="#sec-get-or-create-compartment-module" title="GetOrCreateCompartmentModule ( compartment, source )"><span class="secnum">2.7</span> GetOrCreateCompartmentModule ( <var>compartment</var>, <var>source</var> )</a></li></ol></li><li><span class="item-toggle-none"></span><a href="#sec-compartment-cross-compartment-linking" title="Cross-Compartment Linking"><span class="secnum">3</span> Cross-Compartment Linking</a></li><li><span class="item-toggle-none"></span><a href="#sec-compartment-tla-and-errors" title="Top-Level Await and Errors"><span class="secnum">4</span> Top-Level Await and Errors</a></li><li><span class="item-toggle">+</span><a href="#sec-compartment-module-harmony-intersection" title="Intersection with Module Phases"><span class="secnum">5</span> Intersection with Module Phases</a><ol class="toc"><li><span class="item-toggle-none"></span><a href="#sec-compartment-source-phase-imports" title="Source-Phase Imports"><span class="secnum">5.1</span> Source-Phase Imports</a></li><li><span class="item-toggle-none"></span><a href="#sec-compartment-source-phase-import-expression" title="Source-Phase Import Expressions"><span class="secnum">5.2</span> Source-Phase Import Expressions</a></li><li><span class="item-toggle-none"></span><a href="#sec-compartment-import-defer" title="Import Defer"><span class="secnum">5.3</span> Import Defer</a></li></ol></li><li><span class="item-toggle-none"></span><a href="#sec-compartment-node-viability" title="Node.js Viability Status"><span class="secnum">Annex A <span class="annex-kind">(informative)</span></span> Node.js Viability Status</a></li><li><span class="item-toggle-none"></span><a href="#sec-compartment-test262-frontier" title="test262 Families Unblocked"><span class="secnum">Annex B <span class="annex-kind">(informative)</span></span> test262 Families Unblocked</a></li><li><span class="item-toggle-none"></span><a href="#sec-copyright-and-software-license" title="Copyright &amp; Software License">Copyright &amp; Software License</a></li></ol></div></div><div id="spec-container"><h1 class="version">Stage 1 Draft / July 22, 2026</h1><h1 class="title">Compartments</h1>
 
 <emu-intro id="sec-intro">
   <h1>Introduction</h1>
   <p>
-    A Compartment is an object that owns a mapping from module source keys to
-    module instances, evaluated against a chosen <emu-xref href="#sec-global-object"><a href="https://tc39.es/ecma262/#sec-global-object">global object</a></emu-xref>. This proposal
-    specifies a minimal Compartment surface that composes with the rest of module
-    harmony by taking the intersection of the related proposals rather than
-    layering a parallel module system beside them.
+    A Compartment owns a module-instance memo while reusing the <emu-xref href="#sec-global-object"><a href="https://tc39.es/ecma262/#sec-global-object">global object</a></emu-xref> of
+    the <emu-xref href="#realm"><a href="https://tc39.es/ecma262/#realm">realm</a></emu-xref> in which it is constructed. It gives a <emu-xref href="#host"><a href="https://tc39.es/ecma262/#host">host</a></emu-xref> another module graph,
+    not another mandatory global runtime context.
   </p>
   <p>
-    This document is a scaffold. Each clause below names a part of the
-    intersection surface and will be filled in as the design settles. Prior
-    iterations of the proposal are preserved in the repository's <code>archive/</code>
-    directory and are not normative here.
+    This proposal is a small extension of the ECMA-262 module model. A source
+    phase import obtains a source object. A Compartment selects an instance for
+    that source object, and ordinary module loading, linking, and evaluation
+    advance that instance. The proposal adds neither module descriptors, module
+    tables, resolver or load-hook protocols, nor a required fresh <emu-xref href="#sec-global-object"><a href="https://tc39.es/ecma262/#sec-global-object">global object</a></emu-xref>.
   </p>
-  <emu-note><span class="note">Note</span><div class="note-contents">
-    <p>
-      Two commitments shape this specification. First, a ModuleSource is treated
-      as an opaque key for indexing a module instance within a Compartment; the
-      SES-era module descriptor concept is not used. Second, a Compartment must be
-      able to evaluate modules against the surrounding <emu-xref href="#realm"><a href="https://tc39.es/ecma262/#realm">realm</a></emu-xref>'s <emu-xref href="#sec-global-object"><a href="https://tc39.es/ecma262/#sec-global-object">global object</a></emu-xref>, so
-      that the design is viable for <emu-xref href="#host"><a href="https://tc39.es/ecma262/#host">hosts</a></emu-xref> such as Node.js that do not want to pay
-      for an additional global runtime context.
-    </p>
-  </div></emu-note>
+  <p>
+    Normative references to the existing module lifecycle are to ECMA-262
+    <span class="secnum">16.1.1.4</span>, <span class="secnum">16.1.1.5</span>,
+    and the <code>Link</code> and <code>Evaluate</code> abstract methods of
+    <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module Records</a></emu-xref>. The source-phase and deferred-import proposals own their
+    syntax and their phase-specific behaviour.
+  </p>
 </emu-intro>
 
-<emu-clause id="sec-module-source-key">
-  <h1><span class="secnum">1</span> ModuleSource as an Opaque Key</h1>
+<emu-clause id="sec-compartment-source-keys">
+  <h1><span class="secnum">1</span> Compartment Source Keys</h1>
   <p>
-    A ModuleSource produced by the source phase of a module is used as an opaque
-    key. A Compartment holds at most one module instance per ModuleSource key.
-    This clause will define the identity and lifetime rules for that key.
+    A <dfn tabindex="-1">Compartment source key</dfn> is a source-phase module source object.
+    It is opaque to this proposal. A value is a valid Compartment source key only
+    if it has the source-record internal slot required by
+    <code>%AbstractModuleSource%.prototype</code>. This test is an internal-slot
+    brand test, not a prototype-chain or structural-property test.
+  </p>
+  <p>
+    Two source keys are the same key only if they are the same object. In
+    particular, two separately produced source objects remain distinct keys even
+    when their source text is identical. Source-phase import supplies its usual
+    stable source object for one base <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module Record</a></emu-xref>, so repeated acquisition of
+    that source preserves this identity without requiring Compartments to inspect
+    specifiers, source text, import attributes, or <emu-xref href="#host"><a href="https://tc39.es/ecma262/#host">host</a></emu-xref> metadata.
+  </p>
+  <p>
+    A <emu-xref href="#host-defined"><a href="https://tc39.es/ecma262/#host-defined">host-defined</a></emu-xref> source representation may be a key only when it carries the
+    same <code>%AbstractModuleSource%</code> brand. A module kind with no source
+    representation continues to fail source-phase import as specified by the
+    source-phase proposal; Compartments do not invent a replacement source value.
   </p>
 </emu-clause>
 
 <emu-clause id="sec-compartment-objects">
   <h1><span class="secnum">2</span> Compartment Objects</h1>
-  <p>This clause will define the Compartment abstraction and its instances.</p>
+  <p>
+    Each Compartment instance has the following internal slots:
+  </p>
+  <emu-table id="table-compartment-internal-slots"><figure><figcaption>Table 1</figcaption>
+    <table>
+      <tbody><tr><th>Internal Slot</th><th>Meaning</th></tr>
+      <tr>
+        <td><code>[[Realm]]</code></td>
+        <td><emu-xref href="#current-realm"><a href="https://tc39.es/ecma262/#current-realm">The current Realm Record</a></emu-xref> when the Compartment is constructed.</td>
+      </tr>
+      <tr>
+        <td><code>[[GlobalObject]]</code></td>
+        <td>The <emu-xref href="#sec-global-object"><a href="https://tc39.es/ecma262/#sec-global-object">global object</a></emu-xref> of <code>[[Realm]]</code>.</td>
+      </tr>
+      <tr>
+        <td><code>[[ModuleInstances]]</code></td>
+        <td>A Map from Compartment source keys to the Compartment's <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module Records</a></emu-xref>.</td>
+      </tr>
+      <tr>
+        <td><code>[[ExportsNamespaces]]</code></td>
+        <td>A Map from Compartment source keys to deferred Compartment exports namespaces.</td>
+      </tr>
+    </tbody></table>
+  </figure></emu-table>
 
   <emu-clause id="sec-compartment-constructor">
     <h1><span class="secnum">2.1</span> The Compartment Constructor</h1>
-    <p>This clause will define construction, including the choice of <emu-xref href="#sec-global-object"><a href="https://tc39.es/ecma262/#sec-global-object">global object</a></emu-xref>.</p>
+    <p>
+      The <code>Compartment</code> <emu-xref href="#constructor"><a href="https://tc39.es/ecma262/#constructor">constructor</a></emu-xref> takes no arguments. It creates a
+      Compartment with fresh empty <code>[[ModuleInstances]]</code> and
+      <code>[[ExportsNamespaces]]</code> Maps. It sets <code>[[Realm]]</code> to
+      <emu-xref href="#current-realm"><a href="https://tc39.es/ecma262/#current-realm">the current Realm Record</a></emu-xref> and <code>[[GlobalObject]]</code> to that <emu-xref href="#realm-record"><a href="https://tc39.es/ecma262/#realm-record">Realm
+      Record</a></emu-xref>'s <emu-xref href="#sec-global-object"><a href="https://tc39.es/ecma262/#sec-global-object">global object</a></emu-xref>.
+    </p>
+    <p>
+      <emu-xref href="#sec-types-of-source-code"><a href="https://tc39.es/ecma262/#sec-types-of-source-code">Module code</a></emu-xref> instantiated through this Compartment executes in
+      <code>[[Realm]]</code> and observes <code>[[GlobalObject]]</code> as its
+      <emu-xref href="#sec-global-object"><a href="https://tc39.es/ecma262/#sec-global-object">global object</a></emu-xref>. Construction does not create a <emu-xref href="#realm"><a href="https://tc39.es/ecma262/#realm">Realm</a></emu-xref>, a <emu-xref href="#sec-global-object"><a href="https://tc39.es/ecma262/#sec-global-object">global object</a></emu-xref>, or an
+      evaluator. A later proposal may add a distinct-global evaluator layer; it
+      cannot change the behaviour of this <emu-xref href="#constructor"><a href="https://tc39.es/ecma262/#constructor">constructor</a></emu-xref>.
+    </p>
+  </emu-clause>
+
+  <emu-clause id="sec-compartment-prototype-exports">
+    <h1><span class="secnum">2.2</span> Compartment.prototype.exports ( <var>source</var> )</h1>
+    <p>
+      The <code>exports</code> method returns the deferred Compartment exports
+      namespace for <var>source</var>. It performs its brand checks
+      synchronously. It does not instantiate, load, link, or evaluate a module.
+    </p>
+    <emu-alg><ol><li>Let <var>compartment</var> be the <emu-val>this</emu-val> value.</li><li>If <var>compartment</var> does not have a <code>[[ModuleInstances]]</code> internal slot, throw a <emu-val>TypeError</emu-val> exception.</li><li>Perform ?&nbsp;<emu-xref aoid="RequireCompartmentSourceKey" id="_ref_0"><a href="#sec-require-compartment-source-key">RequireCompartmentSourceKey</a></emu-xref>(<var>source</var>).</li><li>Let <var>namespace</var> be !&nbsp;<emu-xref aoid="GetCompartmentExportsNamespace" id="_ref_1"><a href="#sec-get-compartment-exports-namespace">GetCompartmentExportsNamespace</a></emu-xref>(<var>compartment</var>, <var>source</var>).</li><li>Return <var>namespace</var>.</li></ol></emu-alg>
+    <p>
+      A deferred Compartment exports namespace is not an <code>import defer</code>
+      namespace. Before its <code>[[Module]]</code> is set, it is an identity for
+      the <emu-xref href="#host"><a href="https://tc39.es/ecma262/#host">host</a></emu-xref> linker and has no observable exported bindings. Once its module is
+      linked, it provides that module's ordinary exported names and <emu-xref href="#sec-liveness"><a href="https://tc39.es/ecma262/#sec-liveness">live</a></emu-xref> bindings.
+      It retains its object identity before and after linking.
+    </p>
   </emu-clause>
 
   <emu-clause id="sec-compartment-prototype-import">
-    <h1><span class="secnum">2.2</span> Compartment.prototype.import</h1>
-    <p>This clause will define asynchronous module loading and evaluation.</p>
+    <h1><span class="secnum">2.3</span> Compartment.prototype.import ( <var>source</var> )</h1>
+    <p>
+      The <code>import</code> method obtains the Compartment's instance for
+      <var>source</var>, loads its dependencies, links it, evaluates it, and
+      returns a Promise for the Compartment exports namespace. It has the same
+      asynchronous completion shape as dynamic <code>import()</code>.
+    </p>
+    <emu-alg><ol><li>Let <var>compartment</var> be the <emu-val>this</emu-val> value.</li><li>If <var>compartment</var> does not have a <code>[[ModuleInstances]]</code> internal slot, throw a <emu-val>TypeError</emu-val> exception.</li><li>Perform ?&nbsp;<emu-xref aoid="RequireCompartmentSourceKey" id="_ref_2"><a href="#sec-require-compartment-source-key">RequireCompartmentSourceKey</a></emu-xref>(<var>source</var>).</li><li>Let <var>namespace</var> be !&nbsp;<emu-xref aoid="GetCompartmentExportsNamespace" id="_ref_3"><a href="#sec-get-compartment-exports-namespace">GetCompartmentExportsNamespace</a></emu-xref>(<var>compartment</var>, <var>source</var>).</li><li>Let <var>module</var> be !&nbsp;<emu-xref aoid="GetOrCreateCompartmentModule" id="_ref_4"><a href="#sec-get-or-create-compartment-module">GetOrCreateCompartmentModule</a></emu-xref>(<var>compartment</var>, <var>source</var>).</li><li>Let <var>promiseCapability</var> be !&nbsp;<emu-xref aoid="NewPromiseCapability"><a href="https://tc39.es/ecma262/#sec-newpromisecapability">NewPromiseCapability</a></emu-xref>(<emu-xref href="#sec-promise-constructor"><a href="https://tc39.es/ecma262/#sec-promise-constructor">%Promise%</a></emu-xref>).</li><li>Let <var>loadPromise</var> be <var>module</var>.<emu-xref aoid="LoadRequestedModules"><a href="https://tc39.es/ecma262/#abstract-loadrequestedmodules">LoadRequestedModules</a></emu-xref>().</li><li>When <var>loadPromise</var> is fulfilled, perform <var>module</var>.<emu-xref aoid="Link"><a href="https://tc39.es/ecma262/#abstract-link">Link</a></emu-xref>(). If it completes abruptly, reject <var>promiseCapability</var> with that completion value.</li><li>If linking succeeds, let <var>evaluationPromise</var> be <var>module</var>.<emu-xref aoid="Evaluate"><a href="https://tc39.es/ecma262/#abstract-evaluate">Evaluate</a></emu-xref>().</li><li>When <var>evaluationPromise</var> is fulfilled, resolve <var>promiseCapability</var> with <var>namespace</var>. When it is rejected, reject <var>promiseCapability</var> with the same reason.</li><li>When <var>loadPromise</var> is rejected, reject <var>promiseCapability</var> with the same reason.</li><li>Return <var>promiseCapability</var>.<var class="field">[[Promise]]</var>.</li></ol></emu-alg>
+    <p>
+      <code>import</code> performs no string-based resolution, fetching, or source
+      compilation. Passing a non-source key is therefore a synchronous API error.
+      A failure while loading dependencies, linking, or evaluating rejects the
+      returned Promise. In particular, an evaluation error is never reported as a
+      separate Compartment-specific error channel.
+    </p>
   </emu-clause>
 
-  <emu-clause id="sec-compartment-module-indexing">
-    <h1><span class="secnum">2.3</span> Indexing Module Instances by ModuleSource Key</h1>
-    <p>This clause will define the per-Compartment source-key to instance mapping.</p>
+  <emu-clause id="sec-compartment-module-memoization">
+    <h1><span class="secnum">2.4</span> Module Memoization</h1>
+    <p>
+      <emu-xref aoid="GetOrCreateCompartmentModule" id="_ref_5"><a href="#sec-get-or-create-compartment-module">GetOrCreateCompartmentModule</a></emu-xref>(<var>compartment</var>, <var>source</var>)
+      returns <var>compartment</var>.<code>[[ModuleInstances]]</code>[<var>source</var>]
+      when that entry exists. Otherwise it creates one <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module Record</a></emu-xref> from
+      <var>source</var> in <var>compartment</var>.<code>[[Realm]]</code>, stores it
+      in that Map before loading its requested modules, obtains the deferred
+      exports namespace for the same pair, and sets that namespace's
+      <code>[[Module]]</code> to the new <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module Record</a></emu-xref>.
+    </p>
+    <p>
+      Thus one Compartment has at most one module instance for one source key,
+      including while the instance is loading or linking. Different Compartments
+      have different Maps. They create different instances for the same source key
+      and retain different exported-state and namespace identities, even if they
+      share one <emu-xref href="#realm"><a href="https://tc39.es/ecma262/#realm">Realm</a></emu-xref> and <emu-xref href="#sec-global-object"><a href="https://tc39.es/ecma262/#sec-global-object">global object</a></emu-xref>.
+    </p>
+  </emu-clause>
+
+  <emu-clause id="sec-require-compartment-source-key" aoid="RequireCompartmentSourceKey">
+    <h1><span class="secnum">2.5</span> RequireCompartmentSourceKey ( <var>source</var> )</h1>
+    <emu-alg><ol><li>If <var>source</var> <emu-xref href="#sec-object-type"><a href="https://tc39.es/ecma262/#sec-object-type">is not an Object</a></emu-xref>, throw a <emu-val>TypeError</emu-val> exception.</li><li>If <var>source</var> does not have a <code>[[ModuleSourceRecord]]</code> internal slot, throw a <emu-val>TypeError</emu-val> exception.</li><li>Return unused.</li></ol></emu-alg>
+  </emu-clause>
+
+  <emu-clause id="sec-get-compartment-exports-namespace" aoid="GetCompartmentExportsNamespace">
+    <h1><span class="secnum">2.6</span> GetCompartmentExportsNamespace ( <var>compartment</var>, <var>source</var> )</h1>
+    <emu-alg><ol><li>Let <var>namespace</var> be <var>compartment</var>.<code>[[ExportsNamespaces]]</code>[<var>source</var>].</li><li>If <var>namespace</var> is not empty, return <var>namespace</var>.</li><li>Let <var>namespace</var> be a new deferred Compartment exports namespace with <code>[[Compartment]]</code> <var>compartment</var>, <code>[[SourceKey]]</code> <var>source</var>, and <code>[[Module]]</code> empty.</li><li>Set <var>compartment</var>.<code>[[ExportsNamespaces]]</code>[<var>source</var>] to <var>namespace</var>.</li><li>Return <var>namespace</var>.</li></ol></emu-alg>
+  </emu-clause>
+
+  <emu-clause id="sec-get-or-create-compartment-module" aoid="GetOrCreateCompartmentModule">
+    <h1><span class="secnum">2.7</span> GetOrCreateCompartmentModule ( <var>compartment</var>, <var>source</var> )</h1>
+    <p>
+      If <var>compartment</var>.<code>[[ModuleInstances]]</code>[<var>source</var>]
+      exists, return it. Otherwise, create a <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module Record</a></emu-xref> for <var>source</var>
+      in <var>compartment</var>.<code>[[Realm]]</code>, store it in
+      <var>compartment</var>.<code>[[ModuleInstances]]</code> before loading any
+      requested modules, obtain <emu-xref aoid="GetCompartmentExportsNamespace" id="_ref_6"><a href="#sec-get-compartment-exports-namespace">GetCompartmentExportsNamespace</a></emu-xref>(<var>compartment</var>,
+      <var>source</var>), and set its <code>[[Module]]</code> slot to the new
+      <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module Record</a></emu-xref>. Return the new <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module Record</a></emu-xref>.
+    </p>
   </emu-clause>
 </emu-clause>
 
-<emu-clause id="sec-global-object-sharing">
-  <h1><span class="secnum">3</span> Sharing the Surrounding Realm's Global Object</h1>
+<emu-clause id="sec-compartment-cross-compartment-linking">
+  <h1><span class="secnum">3</span> Cross-Compartment Linking</h1>
   <p>
-    This clause will specify how a Compartment evaluates modules against the
-    surrounding <emu-xref href="#realm"><a href="https://tc39.es/ecma262/#realm">realm</a></emu-xref>'s <emu-xref href="#sec-global-object"><a href="https://tc39.es/ecma262/#sec-global-object">global object</a></emu-xref>, so that no additional global runtime
-    context is required. This is the binding constraint for Node.js viability.
+    Existing <emu-xref href="#host"><a href="https://tc39.es/ecma262/#host">host</a></emu-xref> module loading selects the <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module Record</a></emu-xref> for each ModuleRequest.
+    When that selection targets a Compartment module, the <emu-xref href="#host"><a href="https://tc39.es/ecma262/#host">host</a></emu-xref> retains the target
+    Compartment and source key while it processes the request. It must use the
+    target Compartment's memoized <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module Record</a></emu-xref>, not create an instance in the
+    importing Compartment. This proposal adds no JavaScript resolver callback,
+    loader callback, module table, or descriptor return protocol.
+  </p>
+  <p>
+    A <emu-xref href="#host"><a href="https://tc39.es/ecma262/#host">host</a></emu-xref> may obtain <code>target.exports(targetSource)</code> before it has
+    created the target <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module Record</a></emu-xref>. That stable deferred namespace identifies
+    the target of a cross-Compartment edge. When the target is later imported,
+    <emu-xref aoid="GetOrCreateCompartmentModule" id="_ref_7"><a href="#sec-get-or-create-compartment-module">GetOrCreateCompartmentModule</a></emu-xref> installs the target <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module Record</a></emu-xref> behind the same
+    namespace. An edge arranged this way must not cause a local instance of
+    <code>targetSource</code> in the importing Compartment.
+  </p>
+  <p>
+    The <emu-xref href="#host"><a href="https://tc39.es/ecma262/#host">host</a></emu-xref> makes the requesting Compartment, its <code>[[Realm]]</code>, and its
+    <code>[[GlobalObject]]</code> available to its existing module-loading
+    machinery. A loader can therefore select the target instance in the intended
+    Compartment while using the target context. Multiple Compartments sharing one
+    global do not imply multiple loader registrations.
+  </p>
+  <p>
+    A graph containing such edges is linked and evaluated by the ordinary <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module
+    Record</a></emu-xref> algorithms. The deferred namespace is installed before dependency
+    traversal, so a cycle may traverse a Compartment boundary and return to its
+    starting Compartment. It does not introduce a second linker, an eager copy of
+    exports, or a Compartment-specific cycle rule.
   </p>
 </emu-clause>
 
-<emu-clause id="sec-intersection-source-phase-imports">
-  <h1><span class="secnum">4</span> Intersection with Source Phase Imports</h1>
+<emu-clause id="sec-compartment-tla-and-errors">
+  <h1><span class="secnum">4</span> Top-Level Await and Errors</h1>
   <p>
-    This clause will specify how a Compartment's source keys relate to the static
-    source phase import form (import source ... from ...).
+    A Compartment module uses the ordinary asynchronous evaluation contract of
+    <emu-xref href="#sec-abstract-module-records"><a href="https://tc39.es/ecma262/#sec-abstract-module-records">Module Record</a></emu-xref> <code>Evaluate</code>. If its transitive graph contains
+    top-level await, the Promise returned by <code>compartment.import(source)</code>
+    remains pending until the ordinary evaluation dependency graph completes. A
+    cross-Compartment edge is an edge in that same graph; it neither bypasses nor
+    restarts top-level-await evaluation.
+  </p>
+  <p>
+    If linking fails, <code>import</code> rejects with the linking error. If a
+    module evaluation fails, every dependent evaluation follows ECMA-262 cyclic
+    module error propagation and <code>import</code> rejects with that evaluation
+    error. Re-importing the same source in the same Compartment observes the
+    memoized module's ordinary completed or errored state.
   </p>
 </emu-clause>
 
-<emu-clause id="sec-intersection-source-phase-import-expression">
-  <h1><span class="secnum">5</span> Intersection with the Source Phase Import Expression</h1>
-  <p>
-    This clause will specify how a Compartment relates to the source phase import
-    expression (the dynamic source phase import form).
-  </p>
+<emu-clause id="sec-compartment-module-harmony-intersection">
+  <h1><span class="secnum">5</span> Intersection with Module Phases</h1>
+  <emu-clause id="sec-compartment-source-phase-imports">
+    <h1><span class="secnum">5.1</span> Source-Phase Imports</h1>
+    <p>
+      Static <code>import source</code> retains its grammar, request phase, <emu-xref href="#host"><a href="https://tc39.es/ecma262/#host">host</a></emu-xref>
+      loading, and source-representation errors. Its result may be passed to
+      <code>exports</code> or <code>import</code> as a <emu-xref href="#sec-compartment-source-keys" id="_ref_8"><a href="#sec-compartment-source-keys">Compartment source key</a></emu-xref>.
+      Compartments do not reify a source from a specifier and do not alter source
+      phase cache identity.
+    </p>
+  </emu-clause>
+  <emu-clause id="sec-compartment-source-phase-import-expression">
+    <h1><span class="secnum">5.2</span> Source-Phase Import Expressions</h1>
+    <p>
+      <code>import.source(specifier)</code> retains its Promise result and source
+      phase. After that Promise fulfills with a source object, a caller may pass
+      the object to a Compartment. A rejection from <code>import.source</code> is
+      its own source-phase failure and is not converted into a Compartment import
+      result.
+    </p>
+  </emu-clause>
+  <emu-clause id="sec-compartment-import-defer">
+    <h1><span class="secnum">5.3</span> Import Defer</h1>
+    <p>
+      <code>import defer</code> retains its modifier syntax and deferred namespace
+      exotic-object semantics. A deferred Compartment exports namespace is a
+      different object with a different purpose: it reserves the identity of a
+      Compartment target for linking. Compartments do not make property access
+      start deferred evaluation and do not turn <code>import defer</code> into an
+      attribute or a loader protocol.
+    </p>
+    <p>
+      The import-defer proposal's treatment of top-level-await subgraphs remains
+      unchanged. If an import-defer request reaches a module selected in a
+      Compartment, ordinary phase processing and the selected module's evaluation
+      graph determine the result.
+    </p>
+  </emu-clause>
 </emu-clause>
 
-<emu-clause id="sec-intersection-import-defer">
-  <h1><span class="secnum">6</span> Intersection with Import Defer</h1>
+<emu-annex id="sec-compartment-node-viability" informative="">
+  <h1><span class="secnum">Annex A <span class="annex-kind">(informative)</span></span> Node.js Viability Status</h1>
   <p>
-    This clause will specify how deferred module evaluation composes with a
-    Compartment's source-key indexing.
+    This annex records the current minimum against the project charter. It is not
+    a Node.js API specification.
   </p>
-</emu-clause>
+  <emu-table id="table-node-viability-status"><figure><figcaption>Table 2</figcaption>
+    <table>
+      <tbody><tr><th>Charter item</th><th>Status</th><th>Disposition</th></tr>
+      <tr><td>Share the caller's global</td><td>Met</td><td><code>new Compartment()</code> records the current <emu-xref href="#realm"><a href="https://tc39.es/ecma262/#realm">Realm</a></emu-xref> and its <emu-xref href="#sec-global-object"><a href="https://tc39.es/ecma262/#sec-global-object">global object</a></emu-xref>.</td></tr>
+      <tr><td>Context-aware resolution</td><td>Met</td><td>The existing <emu-xref href="#host"><a href="https://tc39.es/ecma262/#host">host</a></emu-xref> loader receives the requesting Compartment, <emu-xref href="#realm"><a href="https://tc39.es/ecma262/#realm">Realm</a></emu-xref>, and global while selecting a target.</td></tr>
+      <tr><td>Phase information on requests</td><td>Met</td><td>Compartments consume existing ModuleRequest phase information and define no replacement.</td></tr>
+      <tr><td>One loader registration per context</td><td>Met</td><td>Compartments keep instance Maps. They do not register a loader, including when several share one global.</td></tr>
+      <tr><td>Composable with <code>module.registerHooks()</code></td><td>Met at this boundary</td><td>No Compartment hook intercepts or replaces the <emu-xref href="#host-hook"><a href="https://tc39.es/ecma262/#host-hook">host hook</a></emu-xref> layer. A Node integration test remains implementation work.</td></tr>
+      <tr><td>Error separation</td><td>Shortfall</td><td>The source-key API has only synchronous brand errors and asynchronous load, link, and evaluation failures. A Node loader-registration API is needed to specify synchronous infrastructure errors.</td></tr>
+      <tr><td>TLA and synchronous evaluation paths</td><td>Shortfall</td><td><code>Compartment.prototype.import</code> is deliberately asynchronous. No synchronous evaluation entry point is included.</td></tr>
+      <tr><td>Loader-level callback lifetime</td><td>Met at this boundary</td><td>The minimum surface accepts no callbacks and retains only source-key, module, and namespace identities.</td></tr>
+      <tr><td>Meaningful base-loader defaults</td><td>Deferred</td><td>The minimum surface defines no overridable loader class. A future loader API must specify delegation defaults with that API.</td></tr>
+    </tbody></table>
+  </figure></emu-table>
+  <p>
+    Maintainer decision requested: should a follow-on add a <emu-xref href="#host"><a href="https://tc39.es/ecma262/#host">host</a></emu-xref>-only synchronous
+    evaluation operation, rejected for graphs with top-level await, or should
+    Node expose that operation outside the Compartment JavaScript API? That is the
+    only unresolved choice in this increment.
+  </p>
+</emu-annex>
 
-<emu-clause id="sec-loader-hooks">
-  <h1><span class="secnum">7</span> Loading and Resolution</h1>
+<emu-annex id="sec-compartment-test262-frontier" informative="">
+  <h1><span class="secnum">Annex B <span class="annex-kind">(informative)</span></span> test262 Families Unblocked</h1>
   <p>
-    This clause will specify the intersection with module virtualization: how a
-    Compartment resolves specifiers and obtains ModuleSource values.
+    This increment unblocks exactly these proposed staging families under
+    <code>test/staging/Compartments/</code>:
   </p>
-</emu-clause><emu-annex id="sec-copyright-and-software-license" back-matter="">
+  <ul>
+    <li><code>constructor/shared-realm-global</code></li>
+    <li><code>source-key/brand-and-identity</code></li>
+    <li><code>instance-memoization/same-compartment</code></li>
+    <li><code>instance-memoization/separate-compartments</code></li>
+    <li><code>import/async-namespace-and-errors</code></li>
+    <li><code>tla/dependency-and-error-propagation</code></li>
+    <li><code>cross-compartment/deferred-exports-identity</code></li>
+    <li><code>cross-compartment/cyclic-linking</code></li>
+    <li><code>intersection/source-phase-static-and-expression</code></li>
+    <li><code>intersection/import-defer-and-tla</code></li>
+  </ul>
+  <p>
+    Observable consequences include stable equality of repeated
+    <code>exports(source)</code> calls, equality between that object and the
+    fulfilled value of <code>import(source)</code>, one module instance per
+    Compartment and source key, distinct instances in distinct Compartments, and
+    ordinary Promise timing and rejection identity for top-level await and
+    evaluation failures.
+  </p>
+</emu-annex><emu-annex id="sec-copyright-and-software-license" back-matter="">
         <h1>Copyright &amp; Software License</h1>
         
         <div class="copyright-notice" id="copyright-notice"><h2>Copyright Notice</h2>
