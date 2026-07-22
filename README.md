@@ -55,3 +55,4 @@ npm run build   # writes build/index.html
 ## License
 
 This proposal is licensed under the terms in [LICENSE](LICENSE).
+# Deploy trigger
