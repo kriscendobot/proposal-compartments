@@ -12,96 +12,350 @@ contributors: Mark S. Miller, Caridy Patiño, Patrick Soquet, Kris Kowal, Jack W
 <emu-intro id="sec-intro">
   <h1>Introduction</h1>
   <p>
-    A Compartment is an object that owns a mapping from module source keys to
-    module instances, evaluated against a chosen global object. This proposal
-    specifies a minimal Compartment surface that composes with the rest of module
-    harmony by taking the intersection of the related proposals rather than
-    layering a parallel module system beside them.
+    A Compartment owns a module-instance memo while reusing the global object of
+    the realm in which it is constructed. It gives a host another module graph,
+    not another mandatory global runtime context.
   </p>
   <p>
-    This document is a scaffold. Each clause below names a part of the
-    intersection surface and will be filled in as the design settles. Prior
-    iterations of the proposal are preserved in the repository's `archive/`
-    directory and are not normative here.
+    This proposal is a small extension of the ECMA-262 module model. A source
+    phase import obtains a source object. A Compartment selects an instance for
+    that source object, and ordinary module loading, linking, and evaluation
+    advance that instance. The proposal adds neither module descriptors, module
+    tables, resolver or load-hook protocols, nor a required fresh global object.
   </p>
-  <emu-note>
-    <p>
-      Two commitments shape this specification. First, a ModuleSource is treated
-      as an opaque key for indexing a module instance within a Compartment; the
-      SES-era module descriptor concept is not used. Second, a Compartment must be
-      able to evaluate modules against the surrounding realm's global object, so
-      that the design is viable for hosts such as Node.js that do not want to pay
-      for an additional global runtime context.
-    </p>
-  </emu-note>
+  <p>
+    Normative references to the existing module lifecycle are to ECMA-262
+    <span class="secnum">16.1.1.4</span>, <span class="secnum">16.1.1.5</span>,
+    and the <code>Link</code> and <code>Evaluate</code> abstract methods of
+    Module Records. The source-phase and deferred-import proposals own their
+    syntax and their phase-specific behaviour.
+  </p>
 </emu-intro>
 
-<emu-clause id="sec-module-source-key">
-  <h1>ModuleSource as an Opaque Key</h1>
+<emu-clause id="sec-compartment-source-keys">
+  <h1>Compartment Source Keys</h1>
   <p>
-    A ModuleSource produced by the source phase of a module is used as an opaque
-    key. A Compartment holds at most one module instance per ModuleSource key.
-    This clause will define the identity and lifetime rules for that key.
+    A <dfn>Compartment source key</dfn> is a source-phase module source object.
+    It is opaque to this proposal. A value is a valid Compartment source key only
+    if it has the source-record internal slot required by
+    <code>%AbstractModuleSource%.prototype</code>. This test is an internal-slot
+    brand test, not a prototype-chain or structural-property test.
+  </p>
+  <p>
+    Two source keys are the same key only if they are the same object. In
+    particular, two separately produced source objects remain distinct keys even
+    when their source text is identical. Source-phase import supplies its usual
+    stable source object for one base Module Record, so repeated acquisition of
+    that source preserves this identity without requiring Compartments to inspect
+    specifiers, source text, import attributes, or host metadata.
+  </p>
+  <p>
+    A host-defined source representation may be a key only when it carries the
+    same <code>%AbstractModuleSource%</code> brand. A module kind with no source
+    representation continues to fail source-phase import as specified by the
+    source-phase proposal; Compartments do not invent a replacement source value.
   </p>
 </emu-clause>
 
 <emu-clause id="sec-compartment-objects">
   <h1>Compartment Objects</h1>
-  <p>This clause will define the Compartment abstraction and its instances.</p>
+  <p>
+    Each Compartment instance has the following internal slots:
+  </p>
+  <emu-table id="table-compartment-internal-slots">
+    <table>
+      <tr><th>Internal Slot</th><th>Meaning</th></tr>
+      <tr>
+        <td><code>[[Realm]]</code></td>
+        <td>The current Realm Record when the Compartment is constructed.</td>
+      </tr>
+      <tr>
+        <td><code>[[GlobalObject]]</code></td>
+        <td>The global object of <code>[[Realm]]</code>.</td>
+      </tr>
+      <tr>
+        <td><code>[[ModuleInstances]]</code></td>
+        <td>A Map from Compartment source keys to the Compartment's Module Records.</td>
+      </tr>
+      <tr>
+        <td><code>[[ExportsNamespaces]]</code></td>
+        <td>A Map from Compartment source keys to deferred Compartment exports namespaces.</td>
+      </tr>
+    </table>
+  </emu-table>
 
   <emu-clause id="sec-compartment-constructor">
     <h1>The Compartment Constructor</h1>
-    <p>This clause will define construction, including the choice of global object.</p>
+    <p>
+      The <code>Compartment</code> constructor takes no arguments. It creates a
+      Compartment with fresh empty <code>[[ModuleInstances]]</code> and
+      <code>[[ExportsNamespaces]]</code> Maps. It sets <code>[[Realm]]</code> to
+      the current Realm Record and <code>[[GlobalObject]]</code> to that Realm
+      Record's global object.
+    </p>
+    <p>
+      Module code instantiated through this Compartment executes in
+      <code>[[Realm]]</code> and observes <code>[[GlobalObject]]</code> as its
+      global object. Construction does not create a Realm, a global object, or an
+      evaluator. A later proposal may add a distinct-global evaluator layer; it
+      cannot change the behaviour of this constructor.
+    </p>
+  </emu-clause>
+
+  <emu-clause id="sec-compartment-prototype-exports">
+    <h1>Compartment.prototype.exports ( _source_ )</h1>
+    <p>
+      The <code>exports</code> method returns the deferred Compartment exports
+      namespace for <var>source</var>. It performs its brand checks
+      synchronously. It does not instantiate, load, link, or evaluate a module.
+    </p>
+    <emu-alg>
+      1. Let <var>compartment</var> be the <emu-val>this</emu-val> value.
+      1. If <var>compartment</var> does not have a <code>[[ModuleInstances]]</code> internal slot, throw a *TypeError* exception.
+      1. Perform ? RequireCompartmentSourceKey(<var>source</var>).
+      1. Let <var>namespace</var> be ! GetCompartmentExportsNamespace(<var>compartment</var>, <var>source</var>).
+      1. Return <var>namespace</var>.
+    </emu-alg>
+    <p>
+      A deferred Compartment exports namespace is not an <code>import defer</code>
+      namespace. Before its <code>[[Module]]</code> is set, it is an identity for
+      the host linker and has no observable exported bindings. Once its module is
+      linked, it provides that module's ordinary exported names and live bindings.
+      It retains its object identity before and after linking.
+    </p>
   </emu-clause>
 
   <emu-clause id="sec-compartment-prototype-import">
-    <h1>Compartment.prototype.import</h1>
-    <p>This clause will define asynchronous module loading and evaluation.</p>
+    <h1>Compartment.prototype.import ( _source_ )</h1>
+    <p>
+      The <code>import</code> method obtains the Compartment's instance for
+      <var>source</var>, loads its dependencies, links it, evaluates it, and
+      returns a Promise for the Compartment exports namespace. It has the same
+      asynchronous completion shape as dynamic <code>import()</code>.
+    </p>
+    <emu-alg>
+      1. Let <var>compartment</var> be the <emu-val>this</emu-val> value.
+      1. If <var>compartment</var> does not have a <code>[[ModuleInstances]]</code> internal slot, throw a *TypeError* exception.
+      1. Perform ? RequireCompartmentSourceKey(<var>source</var>).
+      1. Let <var>namespace</var> be ! GetCompartmentExportsNamespace(<var>compartment</var>, <var>source</var>).
+      1. Let <var>module</var> be ! GetOrCreateCompartmentModule(<var>compartment</var>, <var>source</var>).
+      1. Let <var>promiseCapability</var> be ! NewPromiseCapability(%Promise%).
+      1. Let <var>loadPromise</var> be <var>module</var>.LoadRequestedModules().
+      1. When <var>loadPromise</var> is fulfilled, perform <var>module</var>.Link(). If it completes abruptly, reject <var>promiseCapability</var> with that completion value.
+      1. If linking succeeds, let <var>evaluationPromise</var> be <var>module</var>.Evaluate().
+      1. When <var>evaluationPromise</var> is fulfilled, resolve <var>promiseCapability</var> with <var>namespace</var>. When it is rejected, reject <var>promiseCapability</var> with the same reason.
+      1. When <var>loadPromise</var> is rejected, reject <var>promiseCapability</var> with the same reason.
+      1. Return <var>promiseCapability</var>.[[Promise]].
+    </emu-alg>
+    <p>
+      <code>import</code> performs no string-based resolution, fetching, or source
+      compilation. Passing a non-source key is therefore a synchronous API error.
+      A failure while loading dependencies, linking, or evaluating rejects the
+      returned Promise. In particular, an evaluation error is never reported as a
+      separate Compartment-specific error channel.
+    </p>
   </emu-clause>
 
-  <emu-clause id="sec-compartment-module-indexing">
-    <h1>Indexing Module Instances by ModuleSource Key</h1>
-    <p>This clause will define the per-Compartment source-key to instance mapping.</p>
+  <emu-clause id="sec-compartment-module-memoization">
+    <h1>Module Memoization</h1>
+    <p>
+      GetOrCreateCompartmentModule(<var>compartment</var>, <var>source</var>)
+      returns <var>compartment</var>.<code>[[ModuleInstances]]</code>[<var>source</var>]
+      when that entry exists. Otherwise it creates one Module Record from
+      <var>source</var> in <var>compartment</var>.<code>[[Realm]]</code>, stores it
+      in that Map before loading its requested modules, obtains the deferred
+      exports namespace for the same pair, and sets that namespace's
+      <code>[[Module]]</code> to the new Module Record.
+    </p>
+    <p>
+      Thus one Compartment has at most one module instance for one source key,
+      including while the instance is loading or linking. Different Compartments
+      have different Maps. They create different instances for the same source key
+      and retain different exported-state and namespace identities, even if they
+      share one Realm and global object.
+    </p>
+  </emu-clause>
+
+  <emu-clause id="sec-require-compartment-source-key" aoid="RequireCompartmentSourceKey">
+    <h1>RequireCompartmentSourceKey ( _source_ )</h1>
+    <emu-alg>
+      1. If <var>source</var> is not an Object, throw a *TypeError* exception.
+      1. If <var>source</var> does not have a <code>[[ModuleSourceRecord]]</code> internal slot, throw a *TypeError* exception.
+      1. Return unused.
+    </emu-alg>
+  </emu-clause>
+
+  <emu-clause id="sec-get-compartment-exports-namespace" aoid="GetCompartmentExportsNamespace">
+    <h1>GetCompartmentExportsNamespace ( _compartment_, _source_ )</h1>
+    <emu-alg>
+      1. Let <var>namespace</var> be <var>compartment</var>.<code>[[ExportsNamespaces]]</code>[<var>source</var>].
+      1. If <var>namespace</var> is not empty, return <var>namespace</var>.
+      1. Let <var>namespace</var> be a new deferred Compartment exports namespace with <code>[[Compartment]]</code> <var>compartment</var>, <code>[[SourceKey]]</code> <var>source</var>, and <code>[[Module]]</code> empty.
+      1. Set <var>compartment</var>.<code>[[ExportsNamespaces]]</code>[<var>source</var>] to <var>namespace</var>.
+      1. Return <var>namespace</var>.
+    </emu-alg>
+  </emu-clause>
+
+  <emu-clause id="sec-get-or-create-compartment-module" aoid="GetOrCreateCompartmentModule">
+    <h1>GetOrCreateCompartmentModule ( _compartment_, _source_ )</h1>
+    <p>
+      If <var>compartment</var>.<code>[[ModuleInstances]]</code>[<var>source</var>]
+      exists, return it. Otherwise, create a Module Record for <var>source</var>
+      in <var>compartment</var>.<code>[[Realm]]</code>, store it in
+      <var>compartment</var>.<code>[[ModuleInstances]]</code> before loading any
+      requested modules, obtain GetCompartmentExportsNamespace(<var>compartment</var>,
+      <var>source</var>), and set its <code>[[Module]]</code> slot to the new
+      Module Record. Return the new Module Record.
+    </p>
   </emu-clause>
 </emu-clause>
 
-<emu-clause id="sec-global-object-sharing">
-  <h1>Sharing the Surrounding Realm's Global Object</h1>
+<emu-clause id="sec-compartment-cross-compartment-linking">
+  <h1>Cross-Compartment Linking</h1>
   <p>
-    This clause will specify how a Compartment evaluates modules against the
-    surrounding realm's global object, so that no additional global runtime
-    context is required. This is the binding constraint for Node.js viability.
+    Existing host module loading selects the Module Record for each ModuleRequest.
+    When that selection targets a Compartment module, the host retains the target
+    Compartment and source key while it processes the request. It must use the
+    target Compartment's memoized Module Record, not create an instance in the
+    importing Compartment. This proposal adds no JavaScript resolver callback,
+    loader callback, module table, or descriptor return protocol.
+  </p>
+  <p>
+    A host may obtain <code>target.exports(targetSource)</code> before it has
+    created the target Module Record. That stable deferred namespace identifies
+    the target of a cross-Compartment edge. When the target is later imported,
+    GetOrCreateCompartmentModule installs the target Module Record behind the same
+    namespace. An edge arranged this way must not cause a local instance of
+    <code>targetSource</code> in the importing Compartment.
+  </p>
+  <p>
+    The host makes the requesting Compartment, its <code>[[Realm]]</code>, and its
+    <code>[[GlobalObject]]</code> available to its existing module-loading
+    machinery. A loader can therefore select the target instance in the intended
+    Compartment while using the target context. Multiple Compartments sharing one
+    global do not imply multiple loader registrations.
+  </p>
+  <p>
+    A graph containing such edges is linked and evaluated by the ordinary Module
+    Record algorithms. The deferred namespace is installed before dependency
+    traversal, so a cycle may traverse a Compartment boundary and return to its
+    starting Compartment. It does not introduce a second linker, an eager copy of
+    exports, or a Compartment-specific cycle rule.
   </p>
 </emu-clause>
 
-<emu-clause id="sec-intersection-source-phase-imports">
-  <h1>Intersection with Source Phase Imports</h1>
+<emu-clause id="sec-compartment-tla-and-errors">
+  <h1>Top-Level Await and Errors</h1>
   <p>
-    This clause will specify how a Compartment's source keys relate to the static
-    source phase import form (import source ... from ...).
+    A Compartment module uses the ordinary asynchronous evaluation contract of
+    Module Record <code>Evaluate</code>. If its transitive graph contains
+    top-level await, the Promise returned by <code>compartment.import(source)</code>
+    remains pending until the ordinary evaluation dependency graph completes. A
+    cross-Compartment edge is an edge in that same graph; it neither bypasses nor
+    restarts top-level-await evaluation.
+  </p>
+  <p>
+    If linking fails, <code>import</code> rejects with the linking error. If a
+    module evaluation fails, every dependent evaluation follows ECMA-262 cyclic
+    module error propagation and <code>import</code> rejects with that evaluation
+    error. Re-importing the same source in the same Compartment observes the
+    memoized module's ordinary completed or errored state.
   </p>
 </emu-clause>
 
-<emu-clause id="sec-intersection-source-phase-import-expression">
-  <h1>Intersection with the Source Phase Import Expression</h1>
-  <p>
-    This clause will specify how a Compartment relates to the source phase import
-    expression (the dynamic source phase import form).
-  </p>
+<emu-clause id="sec-compartment-module-harmony-intersection">
+  <h1>Intersection with Module Phases</h1>
+  <emu-clause id="sec-compartment-source-phase-imports">
+    <h1>Source-Phase Imports</h1>
+    <p>
+      Static <code>import source</code> retains its grammar, request phase, host
+      loading, and source-representation errors. Its result may be passed to
+      <code>exports</code> or <code>import</code> as a Compartment source key.
+      Compartments do not reify a source from a specifier and do not alter source
+      phase cache identity.
+    </p>
+  </emu-clause>
+  <emu-clause id="sec-compartment-source-phase-import-expression">
+    <h1>Source-Phase Import Expressions</h1>
+    <p>
+      <code>import.source(specifier)</code> retains its Promise result and source
+      phase. After that Promise fulfills with a source object, a caller may pass
+      the object to a Compartment. A rejection from <code>import.source</code> is
+      its own source-phase failure and is not converted into a Compartment import
+      result.
+    </p>
+  </emu-clause>
+  <emu-clause id="sec-compartment-import-defer">
+    <h1>Import Defer</h1>
+    <p>
+      <code>import defer</code> retains its modifier syntax and deferred namespace
+      exotic-object semantics. A deferred Compartment exports namespace is a
+      different object with a different purpose: it reserves the identity of a
+      Compartment target for linking. Compartments do not make property access
+      start deferred evaluation and do not turn <code>import defer</code> into an
+      attribute or a loader protocol.
+    </p>
+    <p>
+      The import-defer proposal's treatment of top-level-await subgraphs remains
+      unchanged. If an import-defer request reaches a module selected in a
+      Compartment, ordinary phase processing and the selected module's evaluation
+      graph determine the result.
+    </p>
+  </emu-clause>
 </emu-clause>
 
-<emu-clause id="sec-intersection-import-defer">
-  <h1>Intersection with Import Defer</h1>
+<emu-annex id="sec-compartment-node-viability" informative>
+  <h1>Node.js Viability Status</h1>
   <p>
-    This clause will specify how deferred module evaluation composes with a
-    Compartment's source-key indexing.
+    This annex records the current minimum against the project charter. It is not
+    a Node.js API specification.
   </p>
-</emu-clause>
+  <emu-table id="table-node-viability-status">
+    <table>
+      <tr><th>Charter item</th><th>Status</th><th>Disposition</th></tr>
+      <tr><td>Share the caller's global</td><td>Met</td><td><code>new Compartment()</code> records the current Realm and its global object.</td></tr>
+      <tr><td>Context-aware resolution</td><td>Met</td><td>The existing host loader receives the requesting Compartment, Realm, and global while selecting a target.</td></tr>
+      <tr><td>Phase information on requests</td><td>Met</td><td>Compartments consume existing ModuleRequest phase information and define no replacement.</td></tr>
+      <tr><td>One loader registration per context</td><td>Met</td><td>Compartments keep instance Maps. They do not register a loader, including when several share one global.</td></tr>
+      <tr><td>Composable with <code>module.registerHooks()</code></td><td>Met at this boundary</td><td>No Compartment hook intercepts or replaces the host hook layer. A Node integration test remains implementation work.</td></tr>
+      <tr><td>Error separation</td><td>Shortfall</td><td>The source-key API has only synchronous brand errors and asynchronous load, link, and evaluation failures. A Node loader-registration API is needed to specify synchronous infrastructure errors.</td></tr>
+      <tr><td>TLA and synchronous evaluation paths</td><td>Shortfall</td><td><code>Compartment.prototype.import</code> is deliberately asynchronous. No synchronous evaluation entry point is included.</td></tr>
+      <tr><td>Loader-level callback lifetime</td><td>Met at this boundary</td><td>The minimum surface accepts no callbacks and retains only source-key, module, and namespace identities.</td></tr>
+      <tr><td>Meaningful base-loader defaults</td><td>Deferred</td><td>The minimum surface defines no overridable loader class. A future loader API must specify delegation defaults with that API.</td></tr>
+    </table>
+  </emu-table>
+  <p>
+    Maintainer decision requested: should a follow-on add a host-only synchronous
+    evaluation operation, rejected for graphs with top-level await, or should
+    Node expose that operation outside the Compartment JavaScript API? That is the
+    only unresolved choice in this increment.
+  </p>
+</emu-annex>
 
-<emu-clause id="sec-loader-hooks">
-  <h1>Loading and Resolution</h1>
+<emu-annex id="sec-compartment-test262-frontier" informative>
+  <h1>test262 Families Unblocked</h1>
   <p>
-    This clause will specify the intersection with module virtualization: how a
-    Compartment resolves specifiers and obtains ModuleSource values.
+    This increment unblocks exactly these proposed staging families under
+    <code>test/staging/Compartments/</code>:
   </p>
-</emu-clause>
+  <ul>
+    <li><code>constructor/shared-realm-global</code></li>
+    <li><code>source-key/brand-and-identity</code></li>
+    <li><code>instance-memoization/same-compartment</code></li>
+    <li><code>instance-memoization/separate-compartments</code></li>
+    <li><code>import/async-namespace-and-errors</code></li>
+    <li><code>tla/dependency-and-error-propagation</code></li>
+    <li><code>cross-compartment/deferred-exports-identity</code></li>
+    <li><code>cross-compartment/cyclic-linking</code></li>
+    <li><code>intersection/source-phase-static-and-expression</code></li>
+    <li><code>intersection/import-defer-and-tla</code></li>
+  </ul>
+  <p>
+    Observable consequences include stable equality of repeated
+    <code>exports(source)</code> calls, equality between that object and the
+    fulfilled value of <code>import(source)</code>, one module instance per
+    Compartment and source key, distinct instances in distinct Compartments, and
+    ordinary Promise timing and rejection identity for top-level await and
+    evaluation failures.
+  </p>
+</emu-annex>

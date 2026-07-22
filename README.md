@@ -82,18 +82,22 @@ how a source is obtained and represented.
 
 ## The Compartment surface
 
-The specification scaffold names a `Compartment` constructor, its asynchronous
-`import` entry point, the per-Compartment `ModuleSource` index, global-object
-selection, and the loading and resolution boundary. It intentionally leaves the
-precise constructor and loader signatures open while the intersection settles.
-The surface is meant to be understood in these terms:
+The minimum surface is `new Compartment()`, `compartment.exports(source)`, and
+`compartment.import(source)`. Construction records the current realm and reuses
+its global object. It takes no loader or global-object options. `exports` creates
+a stable, deferred exports-namespace identity for a source without constructing a
+module instance. `import` creates or reuses the local instance, then loads, links,
+and evaluates it asynchronously.
+
+The surface has these consequences:
 
 - A host supplies or resolves `ModuleSource` values through its existing module
   facilities.
-- A Compartment indexes its instances by those opaque source keys.
+- A Compartment indexes its instances and deferred exports namespaces by those
+  opaque source-key object identities.
 - `Compartment.prototype.import` links and evaluates an entry module using that
-  index and returns the module's exports result through the ordinary asynchronous
-  module path.
+  index and returns the same deferred exports namespace through the ordinary
+  asynchronous module path.
 - Source phase imports, the source phase import expression, and `import defer`
   keep their respective syntax and semantics. Compartments compose with them.
 
@@ -175,15 +179,18 @@ on each other without either side creating a duplicate local instance.
 That requirement creates an identity problem. Importing a `ModuleSource` into
 the local Compartment correctly creates a local instance, which is precisely the
 wrong operation for an edge intended to reach a farther Compartment. The design
-therefore needs a reusable deferred module-exports namespace identity, keyed by
-the target Compartment and a specifier or equivalent source key, available before
-the source has been constructed. That placeholder can support cyclic links while
-the eventual instance keeps the same identity.
+therefore uses `target.exports(targetSource)`. It returns a reusable deferred
+exports namespace keyed by the target Compartment and opaque source key, before
+that target has a module instance. When `target.import(targetSource)` later
+materializes the instance, the namespace keeps its identity and provides that
+module's live exports. A host uses this identity while resolving an existing
+module request to the target instance, rather than constructing a local copy.
+That supports cross-Compartment cycles without a descriptor, a modules table, or
+a Compartment-owned resolver protocol.
 
-SES explored `compartment.module(specifier)` for this purpose. The fresh design
-does not adopt its descriptor vocabulary, but it must state the replacement
-identity and lifecycle with equal precision. This is an open specification task,
-not an API promised by the current scaffold.
+SES explored `compartment.module(specifier)` for this purpose. The replacement
+uses a source key rather than a specifier and deliberately separates source
+identity from local instance construction.
 
 ### Linking a virtual module source
 
@@ -245,19 +252,12 @@ the Compartment core should preserve ordinary dynamic-import behavior.
 
 ## Design questions
 
-- What exact deferred module-exports namespace mechanism represents a link to a
-  different Compartment before its source is constructed, and how is it keyed?
-- How are cycles spanning Compartments linked and evaluated so their
-  top-level-await dependency and error behavior matches ordinary cyclic modules?
-- Which global-object choices does the initial constructor expose, and how does
-  a shared-root-realm Compartment coexist with a host that permits only one
-  loader registration per context?
 - Where is the boundary between the minimal `ModuleSource`-keyed core and the
   virtual module source protocol for JSON, CommonJS, WebAssembly, and other
   non-JavaScript modules?
-- Does a host need an explicit synchronous evaluation entry point? If so, how
-  can it preserve the ordinary rule that a graph containing top-level await
-  cannot complete synchronously?
+- Should a follow-on add a host-only synchronous evaluation operation, rejected
+  for graphs with top-level await, or should Node expose that operation outside
+  the Compartment JavaScript API?
 - Can the high-level Compartment surface be expressed in user code with the
   lower-level module-harmony machinery, or do embedded hosts and small bundler
   runtimes justify a native implementation?
