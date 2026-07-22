@@ -22,3 +22,4 @@ jobs:
         folder: build
         clean-exclude: |
           pr
+        token: ${{ secrets.DEPLOY_TOKEN }}
