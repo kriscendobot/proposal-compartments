@@ -18,4 +18,4 @@ Contents at the time of archival:
 
 The fresh design at the repository root starts from the TC39 proposal template and
 pursues a minimal Compartments specification with intersection semantics across the
-module-harmony proposals. See the root `README.md` and `explainer.md`.
+module-harmony proposals. See the root `README.md`.
