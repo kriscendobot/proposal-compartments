@@ -39,8 +39,8 @@ for (const rel of RUN) {
     ["--experimental-vm-modules", "--no-warnings", path.join(here, "runone.mjs"), file, harnessDir],
     {
       encoding: "utf8",
-      // Work around the staged suite's `./fixtures/` path defect (fixtures are
-      // one level up); see README. Semantics under test are unaffected.
+      // Give the harness a stable fixture root. The staged suite uses the
+      // matching `../fixtures/` paths.
       env: { ...process.env, COMPARTMENT_FIXTURES_DIR: path.join(stagingDir, "fixtures") },
     }
   );

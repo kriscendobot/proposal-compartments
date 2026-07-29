@@ -13,8 +13,8 @@ operation surface. It has two findings and one runnable artifact.
    native v8. This harness is a behavioral oracle for a real v8 port, not a
    substitute for one.
 
-The harness also surfaced a defect in the staged suite that would block the
-tests on every engine (see [Staged-suite defect](#staged-suite-defect)).
+The harness runs against test262 staging commit `63b7e7c`, whose fixture imports
+resolve from each family directory to the shared `fixtures/` directory.
 
 ## What the proposal requires of an engine
 
@@ -164,20 +164,12 @@ native v8. It is the honest boundary of what this harness can validate.
   runs. Host-routing integration remains an embedding-test concern for a native
   engine.
 
-## Staged-suite defect
+## Fixture resolution
 
-The nested tests import fixtures with `./fixtures/NAME_FIXTURE.js`, but the
-shared fixtures directory is one level up at `../fixtures/`. Every test in a
-subdirectory (`constructor/`, `instance-memoization/`, `import/`, `tla/`,
-`cross-compartment/`, `intersection/`) therefore references a nonexistent path
-and would fail to load on any engine, native v8 included.
-`source-key/brand-and-identity` is the only apparent exception, and only because
-it never calls `import()` and so never reads a fixture file.
-
-The fix is one edit per affected import: `./fixtures/` to `../fixtures/`. This
-harness sets `COMPARTMENT_FIXTURES_DIR` to the single shared directory so it can
-demonstrate the semantics regardless; that workaround is not a substitute for
-correcting the suite.
+The runner sets `COMPARTMENT_FIXTURES_DIR` to the staging suite's shared
+`fixtures/` directory. At test262 staging commit `63b7e7c`, every family already
+uses the corresponding `../fixtures/` path, so the harness and native runners
+resolve the same fixtures.
 
 ## Running it
 
