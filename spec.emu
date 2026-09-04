@@ -332,7 +332,7 @@ contributors: Mark S. Miller, Caridy Patiño, Patrick Soquet, Kris Kowal, Jack W
     <code>compartment.importNow</code> method and an <code>import.now</code>
     syntactic form) that throws for graphs containing top-level await. The
     follow-on may ship as one proposal on the Compartment core, or as a pair: a
-    general synchronous-import proposal, and a second proposal reconciling it with
+    general synchronous import proposal and a second proposal reconciling it with
     Compartments. That sequencing is an open choice for the follow-on, not for
     this increment.
   </p>

@@ -258,7 +258,7 @@ the Compartment core should preserve ordinary dynamic-import behavior.
 - Synchronous evaluation is deferred to a follow-on proposal (maintainer
   decision, 2026-08-17; see the Node.js Viability Status annex in
   [`spec.emu`](spec.emu)). Should that follow-on ship as one proposal on the
-  Compartment core, or as a pair, with a general synchronous-import proposal and
+  Compartment core, or as a pair, with a general synchronous import proposal and
   a second proposal reconciling it with Compartments?
 - Can the high-level Compartment surface be expressed in user code with the
   lower-level module-harmony machinery, or do embedded hosts and small bundler
