@@ -255,9 +255,11 @@ the Compartment core should preserve ordinary dynamic-import behavior.
 - Where is the boundary between the minimal `ModuleSource`-keyed core and the
   virtual module source protocol for JSON, CommonJS, WebAssembly, and other
   non-JavaScript modules?
-- Should a follow-on add a host-only synchronous evaluation operation, rejected
-  for graphs with top-level await, or should Node expose that operation outside
-  the Compartment JavaScript API?
+- Synchronous evaluation is deferred to a follow-on proposal (maintainer
+  decision, 2026-08-17; see the Node.js Viability Status annex in
+  [`spec.emu`](spec.emu)). Should that follow-on ship as one proposal on the
+  Compartment core, or as a pair, with a general synchronous import proposal and
+  a second proposal reconciling it with Compartments?
 - Can the high-level Compartment surface be expressed in user code with the
   lower-level module-harmony machinery, or do embedded hosts and small bundler
   runtimes justify a native implementation?

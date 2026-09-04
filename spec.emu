@@ -319,16 +319,22 @@ contributors: Mark S. Miller, Caridy Patiño, Patrick Soquet, Kris Kowal, Jack W
       <tr><td>One loader registration per context</td><td>Met</td><td>Compartments keep instance Maps. They do not register a loader, including when several share one global.</td></tr>
       <tr><td>Composable with <code>module.registerHooks()</code></td><td>Met at this boundary</td><td>No Compartment hook intercepts or replaces the host hook layer. A Node integration test remains implementation work.</td></tr>
       <tr><td>Error separation</td><td>Shortfall</td><td>The source-key API has only synchronous brand errors and asynchronous load, link, and evaluation failures. A Node loader-registration API is needed to specify synchronous infrastructure errors.</td></tr>
-      <tr><td>TLA and synchronous evaluation paths</td><td>Shortfall</td><td><code>Compartment.prototype.import</code> is deliberately asynchronous. No synchronous evaluation entry point is included.</td></tr>
+      <tr><td>Top-level-await propagation</td><td>Met</td><td><code>Compartment.prototype.import</code> awaits a transitive top-level-await subgraph and propagates its linking and evaluation rejections, including across cross-Compartment edges.</td></tr>
+      <tr><td>Synchronous evaluation path</td><td>Deferred</td><td><code>Compartment.prototype.import</code> is deliberately asynchronous, and no synchronous evaluation entry point is included in this surface. Synchronous evaluation is deferred to a follow-on proposal; see the decision recorded below.</td></tr>
       <tr><td>Loader-level callback lifetime</td><td>Met at this boundary</td><td>The minimum surface accepts no callbacks and retains only source-key, module, and namespace identities.</td></tr>
       <tr><td>Meaningful base-loader defaults</td><td>Deferred</td><td>The minimum surface defines no overridable loader class. A future loader API must specify delegation defaults with that API.</td></tr>
     </table>
   </emu-table>
   <p>
-    Maintainer decision requested: should a follow-on add a host-only synchronous
-    evaluation operation, rejected for graphs with top-level await, or should
-    Node expose that operation outside the Compartment JavaScript API? That is the
-    only unresolved choice in this increment.
+    Maintainer decision (2026-08-17): synchronous evaluation is deferred out of
+    this surface. A follow-on proposal, built on the Compartment core, is
+    anticipated to introduce a synchronous import operation (a
+    <code>compartment.importNow</code> method and an <code>import.now</code>
+    syntactic form) that throws for graphs containing top-level await. The
+    follow-on may ship as one proposal on the Compartment core, or as a pair: a
+    general synchronous import proposal and a second proposal reconciling it with
+    Compartments. That sequencing is an open choice for the follow-on, not for
+    this increment.
   </p>
 </emu-annex>
 
